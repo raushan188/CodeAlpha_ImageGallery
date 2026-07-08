@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Modern Image Gallery</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <p class="eyebrow">Curated visual stories</p>
+        <h1>Modern Image Gallery</h1>
+        <p class="hero__text">
+          Browse a polished gallery of local images, filter by category, and open
+          each photo in a clean lightbox experience.
+        </p>
+      </header>
+
+      <main>
+        <section id="galleryGrid" class="gallery-grid" aria-label="Image gallery"></section>
+      </main>
+    </div>
+
+    <div id="lightbox" class="lightbox" aria-hidden="true">
+      <button class="lightbox__close" id="closeLightbox" aria-label="Close preview">×</button>
+      <button class="lightbox__nav lightbox__nav--prev" id="prevImage" aria-label="Previous image">‹</button>
+      <img id="lightboxImage" class="lightbox__image" src="" alt="" />
+      <button class="lightbox__nav lightbox__nav--next" id="nextImage" aria-label="Next image">›</button>
+      <p id="lightboxCaption" class="lightbox__caption"></p>
+    </div>
+
+    <script src="script.js" defer></script>
+  </body>
+</html>
