@@ -14,7 +14,7 @@ const availableFiles = [
 
 const galleryItems = availableFiles.map((file, index) => ({
   id: index + 1,
-  src: `assets/${file}`,
+  src: `./assets/${file}`,
   title: `Image ${index + 1}`,
 }));
 
@@ -36,7 +36,7 @@ function renderGallery() {
     const card = document.createElement("article");
     card.className = "gallery-card";
     card.innerHTML = `
-      <img src="${item.src}" alt="${item.title}" loading="lazy" />
+      <img src="${item.src}" alt="${item.title}" loading="lazy" decoding="async" />
       <div class="gallery-card__caption">
         <h2>${item.title}</h2>
       </div>
