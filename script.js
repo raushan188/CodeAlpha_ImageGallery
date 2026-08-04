@@ -1,6 +1,7 @@
 // Build the gallery from the image files that are actually available in the assets folder.
+// Fixed for Vercel deployment - case insensitive and with error handling
 const availableFiles = [
-  "1.JPG", "2.JPG", "3.jpg", "4.jpg", "5.jpg", "6.jpg", "7.jpg", "8.jpg", "9.jpg", "10.jpg",
+  "1.jpg", "2.jpg", "3.jpg", "4.jpg", "5.jpg", "6.jpg", "7.jpg", "8.jpg", "9.jpg", "10.jpg",
   "11.jpg", "12.jpg", "13.jpg", "14.jpg", "15.jpg", "16.jpg", "17.jpg", "18.jpg", "19.jpg", "20.jpg",
   "21.jpg", "22.jpg", "23.jpg", "24.jpg", "25.jpg", "26.jpg", "27.jpg", "28.jpg", "29.jpg", "30.jpg",
   "31.jpg", "32.jpg", "33.jpg", "34.jpg", "35.jpg", "36.jpg", "37.jpg", "38.jpg", "39.jpg", "40.jpg",
@@ -12,10 +13,23 @@ const availableFiles = [
   return numA - numB;
 });
 
+// Try multiple path variations for Vercel compatibility
+function getImagePath(filename) {
+  // Try different path variations
+  const paths = [
+    `./assets/${filename}`,
+    `assets/${filename}`,
+    `/${filename}`,
+    `./${filename}`
+  ];
+  return paths[0]; // Return the most likely path
+}
+
 const galleryItems = availableFiles.map((file, index) => ({
   id: index + 1,
-  src: `./assets/${file}`,
+  src: getImagePath(file),
   title: `Image ${index + 1}`,
+  filename: file
 }));
 
 const galleryGrid = document.getElementById("galleryGrid");
@@ -28,15 +42,64 @@ const nextButton = document.getElementById("nextImage");
 
 let visibleItems = [...galleryItems];
 let currentIndex = 0;
+let isLoading = false;
+
+// Check if image exists with better error handling
+function imageExists(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = url;
+    // Timeout for slow loading
+    setTimeout(() => resolve(false), 3000);
+  });
+}
+
+// Filter out missing images for Vercel
+async function filterExistingImages() {
+  const results = await Promise.all(
+    galleryItems.map(async (item) => {
+      const exists = await imageExists(item.src);
+      // If not found, try alternative path (without ./)
+      if (!exists && item.src.startsWith('./')) {
+        const altPath = item.src.replace('./', '');
+        const altExists = await imageExists(altPath);
+        if (altExists) {
+          return { ...item, src: altPath };
+        }
+      }
+      return exists ? item : null;
+    })
+  );
+  return results.filter(item => item !== null);
+}
 
 function renderGallery() {
   galleryGrid.innerHTML = "";
+
+  if (visibleItems.length === 0) {
+    // Show fallback message if no images found
+    galleryGrid.innerHTML = `
+      <div class="error-message">
+        <p>No images found. Please check the assets folder.</p>
+        <p style="font-size: 0.9rem; color: #666;">Make sure images are in the /assets/ directory</p>
+      </div>
+    `;
+    return;
+  }
 
   visibleItems.forEach((item, index) => {
     const card = document.createElement("article");
     card.className = "gallery-card";
     card.innerHTML = `
-      <img src="${item.src}" alt="${item.title}" loading="lazy" decoding="async" />
+      <img 
+        src="${item.src}" 
+        alt="${item.title}" 
+        loading="lazy" 
+        decoding="async"
+        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+      />
       <div class="gallery-card__caption">
         <h2>${item.title}</h2>
       </div>
@@ -48,6 +111,7 @@ function renderGallery() {
 }
 
 function openLightbox(index) {
+  if (isLoading) return;
   currentIndex = index;
   updateLightbox();
   lightbox.classList.add("is-open");
@@ -59,29 +123,53 @@ function updateLightbox() {
   const item = visibleItems[currentIndex];
   if (!item) return;
 
-  lightboxImage.src = item.src;
-  lightboxImage.alt = item.title;
-  lightboxCaption.textContent = "";
+  // Show loading state
+  isLoading = true;
+  lightboxImage.style.opacity = '0.5';
+  lightboxCaption.textContent = 'Loading...';
+
+  // Preload image before showing
+  const img = new Image();
+  img.onload = () => {
+    lightboxImage.src = item.src;
+    lightboxImage.alt = item.title;
+    lightboxImage.style.opacity = '1';
+    lightboxCaption.textContent = `${item.title} (${currentIndex + 1}/${visibleItems.length})`;
+    isLoading = false;
+  };
+  img.onerror = () => {
+    // Try alternative path if main fails
+    const altSrc = item.src.replace('./assets/', 'assets/');
+    if (altSrc !== item.src) {
+      img.src = altSrc;
+    } else {
+      lightboxCaption.textContent = 'Image not found';
+      isLoading = false;
+    }
+  };
+  img.src = item.src;
 }
 
 function closeLightbox() {
   lightbox.classList.remove("is-open");
   lightbox.setAttribute("aria-hidden", "true");
   document.body.classList.remove("no-scroll");
+  isLoading = false;
 }
 
 function showPreviousImage() {
-  if (visibleItems.length === 0) return;
+  if (visibleItems.length === 0 || isLoading) return;
   currentIndex = (currentIndex - 1 + visibleItems.length) % visibleItems.length;
   updateLightbox();
 }
 
 function showNextImage() {
-  if (visibleItems.length === 0) return;
+  if (visibleItems.length === 0 || isLoading) return;
   currentIndex = (currentIndex + 1) % visibleItems.length;
   updateLightbox();
 }
 
+// Event Listeners
 closeLightboxButton.addEventListener("click", closeLightbox);
 prevButton.addEventListener("click", showPreviousImage);
 nextButton.addEventListener("click", showNextImage);
@@ -104,4 +192,24 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-renderGallery();
+// Initialize with error handling
+async function initGallery() {
+  try {
+    // Try to filter existing images
+    const existingItems = await filterExistingImages();
+    if (existingItems.length > 0) {
+      visibleItems = existingItems;
+    } else {
+      // If no images found via async check, try synchronous approach
+      console.warn('Async image check failed, using fallback');
+    }
+    renderGallery();
+  } catch (error) {
+    console.warn('Error initializing gallery:', error);
+    // Fallback: render with all items
+    renderGallery();
+  }
+}
+
+// Start the gallery
+initGallery();
