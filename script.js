@@ -1,7 +1,7 @@
 // Build the gallery from the image files that are actually available in the assets folder.
-// Fixed for Vercel deployment - case insensitive and with error handling
+// Fixed for Vercel deployment - using the exact filenames that exist on disk.
 const availableFiles = [
-  "1.jpg", "2.jpg", "3.jpg", "4.jpg", "5.jpg", "6.jpg", "7.jpg", "8.jpg", "9.jpg", "10.jpg",
+  "1.JPG", "2.JPG", "3.jpg", "4.jpg", "5.jpg", "6.jpg", "7.jpg", "8.jpg", "9.jpg", "10.jpg",
   "11.jpg", "12.jpg", "13.jpg", "14.jpg", "15.jpg", "16.jpg", "17.jpg", "18.jpg", "19.jpg", "20.jpg",
   "21.jpg", "22.jpg", "23.jpg", "24.jpg", "25.jpg", "26.jpg", "27.jpg", "28.jpg", "29.jpg", "30.jpg",
   "31.jpg", "32.jpg", "33.jpg", "34.jpg", "35.jpg", "36.jpg", "37.jpg", "38.jpg", "39.jpg", "40.jpg",
@@ -15,14 +15,12 @@ const availableFiles = [
 
 // Try multiple path variations for Vercel compatibility
 function getImagePath(filename) {
-  // Try different path variations
   const paths = [
+    `/assets/${filename}`,
     `./assets/${filename}`,
-    `assets/${filename}`,
-    `/${filename}`,
-    `./${filename}`
+    `assets/${filename}`
   ];
-  return paths[0]; // Return the most likely path
+  return paths[0];
 }
 
 const galleryItems = availableFiles.map((file, index) => ({
